@@ -133,3 +133,23 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Project-specific ignores
+"Integrated Codex Build Prompt — Personal Knowledge Analyst (local Rag + Ollama).pdf"
+INSTRUCTIONS.txt
+New ocr technique.txt
+pka/progress.log
+Screenshot 2025-11-01 124655.png
+UI DEMO.png
+UIIII.png
+ui bug.png
+uvicorn.err
+uvicorn.log
+patch.diff
+.indices/
+*.pdf
+*.txt
+*.png
+*.log
+*.err
+*.diff
