@@ -1,0 +1,53 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChatResponse",
+  "type": "object",
+  "properties": {
+    "abstain": {"type": "boolean", "default": false},
+    "answer": {"type": "string", "minLength": 1},
+    "bullets": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim": {"type": "string"},
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "loc": {"type": "string"}
+              },
+              "required": ["id", "loc"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["claim", "sources"],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "loc": {"type": "string"}
+        },
+        "required": ["id", "loc"],
+        "additionalProperties": false
+      },
+      "default": []
+    }
+  },
+  "required": ["abstain", "answer", "bullets", "conflicts", "sources"],
+  "additionalProperties": false
+}

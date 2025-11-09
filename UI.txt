@@ -1,0 +1,175 @@
+Use this as the single authoritative prompt to implement the **UI layer** for the Personal Knowledge Analyst app.
+
+---
+
+# Role & Objective
+
+You are a senior frontend engineer. Build a **premium, Pro Chat Studio** interface (Direction A) that feels like ChatGPT/Gemini-quality: focused, elegant, fast, and accessible. **Stack:** HTML + Tailwind CSS + HTMX (server-rendered Jinja templates). No React. Keep the UI modular and production-ready.
+
+# Visual Direction
+
+* **Theme:** Dark-first (true dark) with optional light theme.
+* **Accent:** **Indigo** (vibrant but classy).
+* **Aesthetic:** Minimal chrome, generous whitespace, layered cards, subtle motion, crisp typography.
+* **Tone:** Professional research tool.
+
+# Design Tokens (Tailwind config / CSS vars)
+
+Define CSS variables and map to Tailwind (implement in `tailwind.css` :root and `.dark`).
+
+* **Neutrals (dark):**
+
+  * `--bg`: #0B0F14 (app background)
+  * `--surface`: #0F141A (cards/panels)
+  * `--surface-2`: #131922 (muted surfaces)
+  * `--border`: #1D2430
+  * `--text`: #E6E9EF (primary), #AFB6C4 (secondary)
+* **Indigo Accent:**
+
+  * `--indigo-50`: #EEF2FF
+  * `--indigo-100`: #E0E7FF
+  * `--indigo-200`: #C7D2FE
+  * `--indigo-400`: #818CF8
+  * `--indigo-500`: #6366F1
+  * `--indigo-600`: #4F46E5
+  * `--indigo-700`: #4338CA
+* **Radii:** 12px (inputs/buttons), 20–24px (cards/modals)
+* **Shadows:** soft ambient + subtle directional hover (`shadow-[0_6px_24px_rgba(0,0,0,0.25)]`)
+* **Typography:** Inter or Geist, weights 400/500/600; base line-height 1.6
+* **Spacing:** 8pt grid; section gaps 24–32px
+* **Focus ring:** 2px outline using indigo (e.g., `outline-indigo-500`), with visible offset
+
+# App Layout (3-Column Shell)
+
+* **Left Nav (56–72px)**: icon-only vertical rail.
+
+  * Items: Home, Library, Evals, Diagnostics, Settings
+  * Selected item = indigo pill background; tooltips on hover
+* **Center (content max-width 760px)**: **Chat thread** + **Composer**
+* **Right Panel (360–420px, collapsible)**: **Sources** drawer with tabs
+
+**Responsive:**
+
+* ≥ `lg`: 3-column shell
+* `md`: hide nav labels; right panel collapses to drawer
+* `sm`: single column; sources become bottom sheet
+
+# Key Screens & Components
+
+## A) Chat Thread
+
+* Card style messages with 20–24px radius; alternating subtle surface colors
+* **Assistant header row** under each answer: `llama3.1:8b · 612ms · seed 42` as muted pills
+* **Inline Citation Chips** inside the answer body:
+
+  * Chip style: rounded pill; subtle indigo border; text like `note.md · L45–72` or `p.12–13`
+  * Hover: underline corresponding snippet in Sources panel (HTMX-triggered class toggle)
+* **Conflict Blocks** (if sources disagree): stacked card showing two columns `Source A vs B` with small confidence bars and a short diff summary
+* **Copy actions:** "Copy answer" and "Copy with citations"
+
+## B) Sources Panel (Right Drawer)
+
+Tabs:
+
+1. **Snippets** (default): list of retrieved snippets; clicking a chip focuses & highlights
+2. **Docs**: full doc preview with page thumbnails (PDF) or headings tree (Markdown), scroll-synced highlights
+3. **Timeline**: groups snippets by date (week/month buckets)
+
+Items:
+
+* Each snippet: source title, location (page/lines), small score badge, and a "Open in modal" button
+* Modal: frosted glass effect, large page/paragraph text with highlight spans; arrow keys navigate to prev/next snippet
+
+## C) Composer
+
+* **Sticky** at bottom; expands to 2 lines if needed
+* Prefix helpers: placeholder with example prompts; support **slash commands** (`/timeline`, `/strict`, `/flashcards`)
+* Right of input: **Strict Mode** pill toggle; **Rerank** toggle (off by default)
+* Left of input: **Health dot** (Ollama) with tooltip: `OK · llama3.1:8b · nomic-embed-text · 612ms`
+* Send button: indigo gradient micro-gloss; disabled while generating
+
+## D) Header Bar (subtle)
+
+* Left: Product logo + title
+* Center: Breadcrumb chips showing the current query plan: `Lookup → Hybrid(K=12) → Rerank(off)`
+* Right: Global search (Cmd/Ctrl+K), Filters (Type, Date), Theme toggle, User menu
+
+## E) Ingestion & Diagnostics
+
+* **Ingestion page**: per-folder progress bars; failures in a compact list with retry buttons
+* **Diagnostics page**: cards for Ollama daemon, Chat model, Embedding model, Embedding dim match, Rasterizer/VLM status; green/amber/red status
+
+## F) Evals Dashboard
+
+* KPI cards: Attribution@K, No-Answer accuracy, p50/p95 latency
+* Spark-lines for recent runs; link to detailed table with filters and CSV export
+
+# States, Motion & Microinteractions
+
+* **Loading:** skeleton loaders (chat bubble placeholder); 3-dot typing indicator for assistant
+* **Transitions:** 150–200ms ease-out for panels; drawer slides from the right with slight blur fade
+* **Hover/Active:** Lift on cards (`translate-y-[-2px]` + subtle shadow); chips gain indigo outline
+* **Focus management:** keyboard focus lands on new assistant message; citations navigable via Tab
+* **Shortcuts:**
+
+  * `Enter` send; `Shift+Enter` newline
+  * `Cmd/Ctrl+K` open command palette (modal with fuzzy search for actions)
+  * `Esc` closes modals/drawers
+
+# Accessibility
+
+* WCAG AA contrast; 4.5:1 minimum
+* Every interactive element has visible focus ring
+* Landmarks: `<header>`, `<nav>`, `<main>`, `<aside>`; aria-labels
+* `aria-live="polite"` for streaming/answer updates
+* Reduced motion media query respected; disable non-essential animations
+
+# Empty States & Errors
+
+* Chat: offer 3 sample prompts (chips) and a "Try Strict Mode" tip
+* Sources: explain how citations work; show a dummy highlighted snippet example
+* Errors: toast + inline explanation (e.g., JSON parse failed → retried once, raw saved), with link to Diagnostics
+
+# Color & Type Usage Examples
+
+* Primary button: text on indigo-600 → darken on hover; pressed → indigo-700
+* Secondary: surface-2 with indigo-500 text
+* Links: indigo-400 default → underline on hover
+* Headings: `text-[--text]` with 1.2–1.25 font-scale from body
+
+# HTMX Interaction Contracts (no app logic, just UI behavior)
+
+* **Citation hover → Sources sync:** on `.citation:hover`, emit event with source-id; Sources panel listens and highlights the matching snippet
+* **Sources click → Chat highlight:** on snippet click, scroll the chat to the nearest matching citation and briefly glow the chip
+* **Strict Mode toggle:** toggles a `data-strict="true|false"` on `<main>` and updates composer pill
+* **Health dot:** receives periodic ping status via HTMX SSE; color-coded update
+
+# Files to produce
+
+* `web/templates/base.html` (shell with header/nav/aside regions)
+* `web/templates/chat.html` (chat page; thread + composer + sources drawer)
+* `web/templates/modals.html` (doc/snippet modal)
+* `web/static/css/tailwind.css` (tokens + utilities)
+* `web/static/js/htmx.min.js` (vendor) + tiny helpers for event dispatch
+* `web/static/assets/` icons (lucide SVGs), logo placeholder
+
+# Acceptance Criteria (UI)
+
+* Chat thread renders cleanly at 760px max width; right sources panel collapses on `md`
+* Citation chips hover highlights the right panel snippet; clicking snippet scrolls the chat and glows the chip
+* Composer shows Strict Mode and Health dot; tooltips and shortcuts work
+* Diagnostics & Evals pages visually consistent with shell
+* Light/dark theme toggle persists and updates tokens
+* All interactive elements are keyboard-accessible and pass contrast checks
+
+# Polish Checklist
+
+* Micro-gradients on primary buttons (subtle, not rainbow)
+* Frosted glass modal with 12–16px blur and tinted backdrop
+* Smooth 120ms scale pop for pin/unpin, drawer open 180ms slide
+* Empty-state illustrations monochrome indigo line art
+* Loader shimmer on answer cards before content arrives
+
+---
+
+**Implement now.** Produce the templates, Tailwind tokens, and HTMX interactions per this spec. Prioritize accessibility, responsiveness, and a premium feel. Ensure the UI functions gracefully even before backend data is wired, using placeholder content and skeletons.

@@ -1,0 +1,45 @@
+﻿# Project Progress Log
+
+## Current Status
+- Refocused project into a minimal local personal assistant: FastAPI backend + HTMX frontend that call a single Ollama model (default `qwen2.5:3b-instruct`).
+- `AssistantService` (`pka/app/services/assistant.py`) wraps Ollama's `/api/chat` endpoint with deterministic parameters and returns `ChatAnswer` objects for the UI.
+- `/api/chat` no longer touches Postgres or retrieval pipelines-each request forwards the user message to Ollama and responds with the generated text.
+- Readiness checks trimmed to two probes: daemon reachability and confirmation that the configured chat model is available (`/health` endpoint).
+- Frontend tuned for a lean, responsive console experience: simplified empty state and suggestion chips, pinned composer at viewport bottom, lighter shadows (no backdrop blur), faster transitions, and copy buttons rendered with static icons for consistent styling.
+- Static assets are cache-busted with the package version to avoid stale Tailwind bundles after deployments.
+- README rewritten to describe the simplified setup (no ingestion, no vector index).
+
+## Key Files & Components
+- `.env` – Ollama connection/model config and generation parameters (`LLM_TEMPERATURE`, `LLM_SEED`).
+- `pka/app/main.py` – wires ReadinessService + AssistantService into the FastAPI app and exposes the chat UI.
+- `pka/app/services/assistant.py` – async HTTPX client that sends prompts to Ollama and formats responses.
+- `pka/app/routers/chat.py` – single POST handler returning `ChatResponse` without any database dependency.
+- `pka/app/services/health.py` – reduced readiness probes (daemon + model).
+- `pka/app/web/` – HTMX/Tailwind UI for submitting questions and displaying responses.
+
+## Testing & Validation
+- python -m compileall pka/app/services/assistant.py pka/app/main.py pka/app/routers/chat.py pka/app/services/health.py
+- `python -m pka.app.scripts.ollama_diagnostics` (optional) confirms Ollama daemon/model.
+- Manual smoke test with FastAPI `TestClient`:
+  ```python
+  from fastapi.testclient import TestClient
+  from pka.app.main import app
+  client = TestClient(app)
+  client.post("/api/chat", json={"question": "Hi", "mode": "chat"})
+  ```
+
+## Outstanding Work / Next Steps
+1. Add error-friendly responses when the Ollama daemon is offline (e.g., translate `RuntimeError` into 503 JSON for the UI).
+2. Optional streaming support using Server-Sent Events if we want incremental tokens in the frontend.
+3. Extend settings modal to let users pick the Ollama model/temperature from the UI and persist to localStorage.
+4. Consider adding lightweight tests that mock the Ollama HTTP call to guarantee `/api/chat` returns the expected schema without hitting the daemon.
+
+## Notes for Next Agent
+- Ollama base URL defaults to `http://localhost:11435`; change `.env` if you keep the daemon on another port.
+- AssistantService lives on `app.state.assistant_service`; use dependency overrides in tests if you want to stub responses.
+- Retrieval/ingest modules remain in the repo but are unused—safe to ignore or prune later if you want a smaller codebase.
+- Update this log after major UI or assistant changes so the next contributor has clear context.
+
+
+
+

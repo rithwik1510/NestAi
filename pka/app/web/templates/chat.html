@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block main %}
+<header class="page-content-header">
+  <div>
+    <h2>Chat with NestAi</h2>
+    <p>NestAi blends personal assistance with lightweight finance context, all powered locally.</p>
+    <div class="chat-quick-actions">
+      <button type="button" data-suggest="Give me a NestAi finance brief for this week and list any risks.">Finance brief</button>
+      <button type="button" data-suggest="Summarise yesterday's meeting and extract action items.">Meeting recap</button>
+      <button type="button" data-suggest="Draft a plan for the next product review using my latest notes.">Review plan</button>
+    </div>
+  </div>
+  <div class="page-content-meta telemetry">
+    <div class="telemetry-pill">
+      <span>Latency</span>
+      <strong id="chat-latency">--</strong>
+    </div>
+    <div class="telemetry-pill">
+      <span>Run ID</span>
+      <strong id="chat-run-id">--</strong>
+    </div>
+  </div>
+</header>
+
+<section class="chat-empty" id="chat-empty-state" data-empty="true">
+  <h3>Ready when you are</h3>
+  <p>NestAi only uses your local Ollama stack. Start typing or pick a quick prompt.</p>
+  <div class="chat-ideas">
+    <button type="button" data-suggest="Catch me up on what I was working on yesterday.">Catch me up</button>
+    <button type="button" data-suggest="Summarise my recent research notes in bullet points.">Summarise notes</button>
+  </div>
+</section>
+
+<div class="chat-stage">
+  <div id="chat-thread" class="chat-thread"></div>
+  <div id="typing-indicator" class="typing-indicator hidden">
+    <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <span>NestAi is crafting your answer...</span>
+  </div>
+</div>
+
+<form id="chat-form" class="composer">
+  <input id="chat-attachment-input" type="file" class="sr-only" multiple accept=".txt,.md,.markdown,.json,.csv,.log,.eml,.mbox,.pdf,.rtf,.html,.htm" />
+  <input id="chat-image-input" type="file" class="sr-only" accept="image/*" />
+  <div class="composer-row">
+    <div class="composer-tools">
+      <button type="button" id="composer-attach" aria-label="Attach files">
+        <img src="{{ url_for('static', path='assets/attachment.svg') }}" alt="" width="16" height="16" />
+      </button>
+      <button type="button" id="composer-screenshot" aria-label="Attach image or screenshot">
+        <img src="{{ url_for('static', path='assets/diagnostics.svg') }}" alt="" width="16" height="16" />
+      </button>
+    </div>
+    <label for="question" class="sr-only">Ask a question</label>
+    <textarea
+      id="question"
+      name="question"
+      rows="1"
+      placeholder="Ask NestAi anything - it will respond using {{ assistant_model or 'your chosen model' }}."
+      required
+      autocomplete="off"
+    ></textarea>
+    <button type="submit" aria-label="Send message">Send</button>
+  </div>
+  <div id="composer-status" class="composer-status" aria-live="polite"></div>
+  <div id="composer-attachments" class="composer-attachments hidden" aria-live="polite"></div>
+  <div class="composer-footer">
+    <span>Press <kbd>Enter</kbd> to send. Use <kbd>Shift</kbd> + <kbd>Enter</kbd> for a newline.</span>
+    <div class="composer-shortcuts">
+      <span class="suggestion-chip" data-suggest="List action items for my project based on our last chat.">
+        <span aria-hidden="true">*</span>
+        <span>Action items</span>
+      </span>
+    </div>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,129 @@
+Integrating a Local Ollama LLM with Your FastAPI RAG Project
+Integrating a local large-language model (LLM) via Ollama into your FastAPI application involves two key steps:
+Setting up the Ollama server with the required models.
+Calling Ollama’s REST API (or using its Python SDK) from your backend to generate responses and embeddings.
+Below, we outline a clear approach – with code examples – to connect the local LLM in your project. This will enable your personal assistant to retrieve information and generate answers quickly and with citations, as per your RAG design.
+1. Set Up Ollama and Models
+Install and Run Ollama: Ensure you have Ollama installed and running as a service on your machine. By default, Ollama runs a local REST API on port 11434 for serving models
+builtin.com
+. You can start the server (if not already running) by executing ollama serve in a terminal
+geshan.com.np
+geshan.com.np
+. Pull the Required Models: Use the Ollama CLI to download the models you need. For example:
+Chat model (for answer generation):
+ollama pull qwen2.5:3b-instruct
+(Replace with your chosen model name. Model names use a name:tag format, e.g. orca-mini:3b-q4_1, and if no tag is given, Ollama uses the latest version
+ollama.readthedocs.io
+.)
+Embedding model (for vector embeddings):
+ollama pull nomic-embed-text
+Verify installation by running ollama list to see the models. Once the Ollama daemon is running and models are installed, you’re ready to integrate it into the backend.
+2. Connecting to Ollama’s API from FastAPI
+Your FastAPI backend will communicate with the local Ollama service via HTTP calls. You have two options: use standard HTTP requests or the official Ollama Python library. Both ultimately call the same REST endpoints.
+Option A: Using HTTP Requests (REST API)
+Ollama exposes a /api/generate endpoint to generate text from a model
+builtin.com
+. By default this endpoint streams output tokens, but you can get a one-shot JSON response by setting "stream": false in the request
+geshan.com.np
+geshan.com.np
+. The JSON response includes a "response" field with the generated text. In your FastAPI app, you can create an endpoint that forwards prompts to Ollama. For example, in your FastAPI route function:
+import requests
+
+@app.post("/generate")
+def generate_answer(query: Query):  # Query is a Pydantic model with 'prompt' and optionally 'model'
+    payload = {
+        "model": query.model or "qwen2.5:3b-instruct",  # default to your chosen model
+        "prompt": query.prompt,
+        "stream": False  # get the full response in one go
+    }
+    try:
+        res = requests.post("http://localhost:11434/api/generate", json=payload)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Ollama API error: {e}")
+    # Parse the JSON to extract the model's answer text
+    answer_text = res.json().get("response")
+    return {"answer": answer_text}
+This snippet posts the user prompt to http://localhost:11434/api/generate along with the model name. It expects a JSON response and returns the "response" text as the answer. In the example above, the default model is set to qwen2.5:3b-instruct (you can change this default or allow it to be specified in the request). The code checks for HTTP errors and then parses the result
+medium.com
+. Important: Always include the model name in the payload. If the model tag contains special characters (like colons), ensure it’s a proper string (as shown). Ollama will load that model (if not already in memory) and run the prompt. By using "stream": false, the call will block until the full response is ready
+geshan.com.np
+, which simplifies processing.
+Option B: Using the Ollama Python SDK (Alternative)
+Ollama provides a Python package that can be installed via pip (pip install ollama). This SDK internally handles API calls to the local server. You can use it for convenience:
+import ollama
+
+# Example: generate a response using the Python SDK
+result = ollama.generate(
+    model="qwen2.5:3b-instruct", 
+    prompt="Your question here",
+    options={"stream": False}  # disable streaming to get full response
+)
+answer_text = result['response']
+This achieves the same result as the raw HTTP call. Under the hood, the SDK likely calls the same /api/generate endpoint. You can choose either approach; using requests gives you full control, whereas the SDK provides a slightly cleaner syntax
+ollama.com
+. For an MVP, the direct HTTP approach (Option A) is straightforward and has no additional dependencies beyond requests.
+3. Generating Embeddings for Retrieval (RAG Integration)
+For Retrieval-Augmented Generation, you’ll use an embedding model (like nomic-embed-text) to vectorize texts and queries. Ollama supports an /api/embed endpoint specifically for embedding generation
+ollama.com
+:
+Embedding via REST: A POST to /api/embed with JSON {"model": "<embed-model>", "input": "<text to embed>"} returns a list of embedding vectors. For example:
+curl http://localhost:11434/api/embed -d '{
+    "model": "nomic-embed-text",
+    "input": "Llamas are members of the camelid family."
+}'
+This will return a JSON containing an "embeddings" array (the vector representation of the input text)
+ollama.com
+.
+Embedding via Python SDK: If using the Python library, you can simply call:
+vec_response = ollama.embed(model="nomic-embed-text", input=text_to_embed)
+embedding_vector = vec_response["embeddings"]
+This returns the embedding vector(s) for the given input
+ollama.com
+.
+In your FastAPI backend, you might create a function in an ingestion service to compute embeddings for documents and store them in the Postgres/pgvector database, and another function to embed user queries at runtime for similarity search. Both can call Ollama’s embed API as shown above. Example (embedding a query and retrieving documents):
+# Assuming `query_text` is the user’s question and we have a vector DB client:
+embed_res = requests.post("http://localhost:11434/api/embed", json={
+    "model": "nomic-embed-text",
+    "input": query_text
+})
+query_vector = embed_res.json().get("embeddings")
+# Use query_vector to perform pgvector or BM25 retrieval...
+docs = vector_store.query(query_vector)
+With the retrieved documents (and perhaps their citations), you would then construct a prompt for the LLM that includes those docs (e.g., “Using the information below, answer the question... [DOC CONTENT] ... Question: ...”) and call the /api/generate as in step 2. This way, the LLM uses the personal knowledge source to produce a cited answer.
+4. FastAPI Endpoint Integration (End-to-End)
+Combine the above steps in your FastAPI app’s logic:
+Ingestion Pipeline: For each personal document, call the embed API to get a vector and store it in pgvector (and index text in Tantivy for BM25). This can be done offline or via an /ingest endpoint. (Ensure to use the nomic-embed-text model or similar for embeddings, as it’s optimized for vector representations
+ollama.com
+ollama.com
+.)
+Answer Generation Endpoint: On your Q&A endpoint (e.g., POST /answer), do the following:
+Embed the user’s question with the embedding model to get the query vector.
+Perform a hybrid search: use the vector (via pgvector similarity) and maybe BM25 (Tantivy) to retrieve top relevant snippets from your knowledge base.
+Construct a prompt that includes those snippets (with source identifiers for citations) and the user’s question. For example: “Context: [Doc1 snippet] (source [1]); [Doc2 snippet] (source [2]) ... Question: [user’s question]. Answer in detail with references to the sources.”
+Call the chat model via /api/generate with this prompt (e.g., model = qwen2.5:3b-instruct).
+Return the model’s answer (which should include the citations if the prompt was crafted correctly).
+Since all Ollama interactions happen server-side, the frontend (HTMX + Jinja2) will simply receive the final answer with citations from the backend and display it. The frontend doesn’t call Ollama directly – it only interacts with your FastAPI endpoints, keeping the implementation secure and local.
+5. Performance and Accuracy Considerations
+To use the local LLM accurately and with speed, keep in mind:
+Model size vs Speed: The default Qwen 2.5 (3B) instruct model is relatively small and will be faster than the larger Qwen3 (8B) model. Start with the 3B for quick responses, and only consider falling back to 8B if you need better quality on complex queries. Smaller models require less RAM and load faster, which is important for responsive interactions.
+Keep the Model Loaded: By default, Ollama will unload a model from memory if it’s unused for a certain period (5 minutes by default)
+ollama.readthedocs.io
+. Loading a model can introduce a delay (especially for multi-GB models). To mitigate this:
+Use the keep_alive parameter in your generate calls to keep the model in memory longer. For example, {"keep_alive": "30m"} in the JSON payload will keep it loaded for 30 minutes after each request
+ollama.readthedocs.io
+. This reduces cold-start delays.
+Alternatively, you could periodically send a lightweight request (a small prompt or a health check) to the model within the timeout window to ensure it stays loaded.
+During app startup, you might trigger a dummy generate call (or use the Ollama API to preload the model) so that the first real user query doesn’t pay the load penalty.
+Synchronous vs Streaming: Since your current design does not require streaming token-by-token, using stream:false is simplest. It returns the full completion in one response, as shown in the curl example above
+geshan.com.np
+. This avoids dealing with server-sent events and makes the FastAPI implementation easier (just wait for the JSON and return it). If you later want partial streaming for a better UI experience, Ollama can stream by default – you’d then use an async generator or similar in FastAPI to relay those chunks.
+Threading and Concurrency: The provided integration approach calls Ollama’s API synchronously. If your FastAPI app expects multiple concurrent requests, note that a single local LLM model may handle one generation at a time (depending on Ollama’s internals). If concurrency becomes an issue, you might implement a queue or limit concurrent accesses to the model, or run multiple model instances (if resources allow). For now, with synchronous calls and an MVP, this likely isn’t a huge concern.
+Accuracy and Citations: The quality of answers with correct citations will depend heavily on prompt design and the retrieved content. Make sure your prompt clearly instructs the model to use the provided documents and cite them (e.g., “Use the provided text to answer and cite sources as [1], [2]…”). Keep the context length in mind – Qwen models can handle fairly long input, but try to provide only the most relevant snippets to avoid confusion and reduce latency.
+Testing the Integration: Finally, test your end-to-end pipeline:
+Does a sample question return an answer with citations?
+Are the citations correct (matching the sources from retrieval)?
+How long does a typical response take? If it’s too slow, consider using an even smaller model or quantizing the model (Ollama supports quantized model files, e.g., orca-mini:3b-q4_1 indicates 4-bit quantization
+ollama.readthedocs.io
+, which can speed up inference at some cost to accuracy).
+By following this approach, you leverage a local-first RAG stack: FastAPI handles the web interface, Postgres/pgvector + Tantivy handle retrieval, and Ollama’s local LLMs handle generation – all without external API calls. The integration points described (the generate and embed calls) are the critical glue. Using the code patterns above, you should be able to get your personal assistant running with the local LLM responding accurately and efficiently.

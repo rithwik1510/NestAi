@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block main %}
+<header class="page-content-header">
+  <div>
+    <h2>Conversation library</h2>
+    <p>Your past sessions are stored locally. Quickly pick up where you left off.</p>
+  </div>
+  <div class="page-content-meta">
+    <label for="library-search" class="sr-only">Search conversations</label>
+    <input
+      id="library-search"
+      type="search"
+      placeholder="Search sessions"
+      autocomplete="off"
+      class="input-control"
+    />
+    <button type="button" class="primary subtle">New session</button>
+  </div>
+</header>
+
+<section class="library-grid" id="library-list">
+  {% set sessions = [
+    {
+      "title": "Deep work ritual recap",
+      "updated": "Updated 2h ago",
+      "summary": "Distilled insights from Cal Newport notes and weekly review.",
+      "tags": ["notes", "focus"],
+    },
+    {
+      "title": "Q1 project debrief",
+      "updated": "Updated yesterday",
+      "summary": "Decisions, blockers and next steps compiled from project documents.",
+      "tags": ["project", "summary"],
+    },
+    {
+      "title": "Inbox zero sprint",
+      "updated": "Updated 5d ago",
+      "summary": "Email batching results, response templates and takeaways.",
+      "tags": ["workflow", "email"],
+    }
+  ] %}
+  {% for session in sessions %}
+  <article
+    class="library-card"
+    data-title="{{ session.title|lower }}"
+    data-summary="{{ session.summary|lower }}"
+  >
+    <div class="library-card-header">
+      <span>{{ session.updated }}</span>
+      <button type="button">Open</button>
+    </div>
+    <h3>{{ session.title }}</h3>
+    <p>{{ session.summary }}</p>
+    <ul class="library-tags">
+      {% for tag in session.tags %}
+      <li>{{ tag }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+</section>
+
+<p id="library-empty" class="library-empty hidden">No sessions match your search.</p>
+{% endblock %}

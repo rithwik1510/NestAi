@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block main %}
+<header class="page-content-header">
+  <div>
+    <h2>Preferences</h2>
+    <p>Fine-tune how the assistant behaves. Settings are stored locally in your browser.</p>
+  </div>
+</header>
+
+<form id="settings-form" class="settings-grid">
+  <section class="settings-card">
+    <header>
+      <h3>Model</h3>
+      <p>Choose which Ollama model powers responses.</p>
+    </header>
+    <label class="input-label" for="setting-model">Default model</label>
+    <select id="setting-model" name="model" data-setting-key="model" class="input-control">
+      <option value="qwen2.5:3b-instruct">qwen2.5:3b-instruct (default)</option>
+      <option value="llama3.1:8b">llama3.1:8b</option>
+      <option value="phi3:medium">phi3:medium</option>
+    </select>
+  </section>
+
+  <section class="settings-card">
+    <header>
+      <h3>Behaviour</h3>
+      <p>Control guardrails and retrieval-style behaviours.</p>
+    </header>
+    <label class="toggle">
+      <input type="checkbox" data-setting-key="strict" />
+      <span>
+        <strong>Strict cite-or-abstain</strong>
+        <small>The assistant will only respond with verifiable information.</small>
+      </span>
+    </label>
+
+    <label class="toggle">
+      <input type="checkbox" data-setting-key="reranker" />
+      <span>
+        <strong>Enable reranker</strong>
+        <small>Improves retrieval quality with a cross-encoder reranker (slightly slower).</small>
+      </span>
+    </label>
+
+    <label class="slider" for="setting-temperature">
+      <div>
+        <strong>Temperature</strong>
+        <small>Lower values are more deterministic.</small>
+      </div>
+      <input id="setting-temperature" type="range" min="0" max="1" step="0.1" data-setting-key="temperature" />
+    </label>
+  </section>
+
+  <section class="settings-card">
+    <header>
+      <h3>Session</h3>
+      <p>Keep an eye on privacy and local runtime details.</p>
+    </header>
+    <ul class="settings-list">
+      <li>
+        <span class="label">Runtime</span>
+        <span class="value">Ollama at {{ ollama_url or 'http://localhost:11435' }}</span>
+      </li>
+      <li>
+        <span class="label">Storage</span>
+        <span class="value">Conversations remain on-device</span>
+      </li>
+      <li>
+        <span class="label">Theme</span>
+        <span class="value">
+          <button id="theme-toggle-inline" type="button" class="link">
+            Toggle theme
+          </button>
+        </span>
+      </li>
+    </ul>
+  </section>
+
+  <footer class="settings-footer">
+    <button type="submit" class="primary">Save preferences</button>
+    <p id="settings-feedback" class="hidden">Saved locally.</p>
+  </footer>
+</form>
+{% endblock %}

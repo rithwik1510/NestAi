@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme | default('dark') }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "NestAi" }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='assets/logo.svg') }}" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/tailwind.css') }}?v={{ static_version }}" />
+  </head>
+  <body class="app-shell">
+    <div class="app-grid">
+      {% set nav_items = [
+        ('home', 'Chat', 'home', '/'),
+        ('library', 'Library', 'library', '/library'),
+        ('diagnostics', 'Diagnostics', 'diagnostics', '/diagnostics'),
+        ('settings', 'Settings', 'settings', '/settings')
+      ] %}
+
+      <aside id="sidebar" class="sidebar" data-open="false" aria-label="Workspace navigation">
+        <div class="sidebar-header">
+          <a href="/" class="sidebar-logo">
+            <img src="{{ url_for('static', path='assets/logo.svg') }}" alt="Assistant logo" width="26" height="26" />
+          </a>
+          <div class="sidebar-title">
+            <h2>NestAi</h2>
+            <span>Private • On-device</span>
+          </div>
+        </div>
+
+        <div class="sidebar-actions">
+          <a href="/" class="primary">
+            <span>Start new chat</span>
+          </a>
+          <div class="sidebar-pill">
+            <strong>Why NestAi?</strong>
+            <p>Finance-aware personal assistant with cite-or-abstain answers and replayable runs.</p>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3>Workspace</h3>
+          <nav class="sidebar-nav">
+            {% for slug, label, icon, href in nav_items %}
+            {% set is_active = active_page == slug %}
+            <a href="{{ href }}" aria-current="{{ 'page' if is_active else 'false' }}">
+              <span class="icon">
+                <img src="{{ url_for('static', path='assets/' ~ icon ~ '.svg') }}" alt="" width="18" height="18" />
+              </span>
+              <span>{{ label }}</span>
+            </a>
+            {% endfor %}
+          </nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <p>Model</p>
+          <strong>{{ assistant_model or 'Unknown' }}</strong>
+          <small>All responses stay on this device. Adjust behaviour in Settings.</small>
+          <button id="theme-toggle" type="button">
+            <img src="{{ url_for('static', path='assets/theme.svg') }}" alt="" width="14" height="14" />
+            <span>Toggle theme</span>
+          </button>
+          <div class="sidebar-mini-card">
+            <span>Local ledger brief:</span>
+            <strong>Ask for a "NestAi finance brief" to review budgets with tasks.</strong>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="top-bar">
+          <div class="top-bar-hgroup">
+            <div class="top-bar-title">
+              <div class="hero-pills">
+                <span class="hero-pill">Local-only</span>
+                <span class="hero-pill">Cited answers</span>
+                <span class="hero-pill">Finance aware</span>
+              </div>
+              <h1>NestAi personal copilot</h1>
+              <p>NestAi keeps every reply on your device using {{ assistant_model or 'your model' }}.</p>
+              <div class="hero-stats">
+                <div>
+                  <strong>Deterministic</strong>
+                  <span>Seed {{ settings.llm_seed }}</span>
+                </div>
+                <div>
+                  <strong>Strict citations</strong>
+                  <span>Abstain if unsupported</span>
+                </div>
+                <div>
+                  <strong>Replay ready</strong>
+                  <span>Persisted runs</span>
+                </div>
+              </div>
+            </div>
+            <nav class="top-bar-tabs" aria-label="Mobile navigation">
+              {% for slug, label, icon, href in nav_items %}
+              {% set is_active = active_page == slug %}
+              <a href="{{ href }}" aria-current="{{ 'page' if is_active else 'false' }}">
+                <img src="{{ url_for('static', path='assets/' ~ icon ~ '.svg') }}" alt="" width="14" height="14" />
+                <span>{{ label }}</span>
+              </a>
+              {% endfor %}
+            </nav>
+          </div>
+          <div class="top-bar-actions">
+            <div class="badge-live">
+              <span aria-hidden="true"></span>
+              <span id="chat-model">{{ assistant_model or 'Model' }}</span>
+            </div>
+            <div class="top-bar-actions-buttons">
+              <button id="sidebar-toggle" type="button" class="icon-button sidebar-trigger" aria-label="Toggle navigation">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button id="theme-toggle-mobile" type="button" class="icon-button" aria-label="Toggle theme">
+                <img src="{{ url_for('static', path='assets/theme.svg') }}" alt="" width="16" height="16" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section class="page-content">
+          {% block main %}{% endblock %}
+        </section>
+      </main>
+
+      <aside class="context-panel" aria-label="Session context">
+        <h3>Session status</h3>
+        <div class="card">
+          <strong>NestAi local mode</strong>
+          <p>NestAi routes inference to Ollama at {{ ollama_url or 'http://localhost:11435' }}.</p>
+        </div>
+        <div class="card">
+          <strong>Privacy first</strong>
+          <p>No prompts or responses leave this machine. Perfect for sensitive work and finance tasks.</p>
+        </div>
+        <div class="card strict-card">
+          <strong>Strict mode tip</strong>
+          <p>Toggle strict mode in Settings to force cite-or-abstain answers with higher confidence.</p>
+        </div>
+        <div class="card">
+          <strong>Validation</strong>
+          <p>Run <code>make validate</code> to refresh the readiness snapshot and persist the JSON artifact.</p>
+        </div>
+        <div class="card highlight-card">
+          <strong>NestAi tip</strong>
+          <p>Ask for a "NestAi finance brief" to review budgets alongside task summaries.</p>
+        </div>
+      </aside>
+    </div>
+
+    <script src="{{ url_for('static', path='js/ui.js') }}?v={{ static_version }}" defer></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

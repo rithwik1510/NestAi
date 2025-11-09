@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block main %}
+<section class="diagnostics-grid">
+  <article class="glow-card diag-card">
+    <header>
+      <h2>Readiness snapshot</h2>
+      <span class="status-pill {{ 'ok' if readiness.status == 'pass' else 'warn' }}">{{ readiness.status|capitalize }}</span>
+    </header>
+    <p class="diag-summary">NestAi checks Ollama reachability, required models, and embedding dimension before serving chat.</p>
+    <ul class="probe-list">
+      {% for probe in readiness.probes %}
+      <li>
+        <span class="probe-name">{{ probe.name|replace('_', ' ')|title }}</span>
+        <span class="probe-status {{ 'ok' if probe.healthy else 'warn' }}">{{ 'Pass' if probe.healthy else 'Fail' }}</span>
+        {% if probe.detail %}
+        <small>{{ probe.detail }}</small>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </article>
+
+  <article class="glow-card diag-card">
+    <header>
+      <h2>Validation report</h2>
+      {% if validation_report and validation_report.summary.passed %}
+      <span class="status-pill ok">Pass</span>
+      {% elif validation_report %}
+      <span class="status-pill warn">Attention</span>
+      {% else %}
+      <span class="status-pill warn">Missing</span>
+      {% endif %}
+    </header>
+    {% if validation_report %}
+    <dl class="diag-list">
+      <div>
+        <dt>Generated at</dt>
+        <dd>{{ validation_report.generated_at }}</dd>
+      </div>
+      <div>
+        <dt>Chat model</dt>
+        <dd>{{ validation_report.summary.chat_model }}</dd>
+      </div>
+      <div>
+        <dt>Embed model</dt>
+        <dd>{{ validation_report.summary.embed_model }}</dd>
+      </div>
+      {% if validation_report.embedding %}
+      <div>
+        <dt>Embedding</dt>
+        <dd>{{ validation_report.embedding.latency_ms or '?' }} ms · {{ validation_report.embedding.vector_dim or '?' }}d</dd>
+      </div>
+      {% endif %}
+      {% if validation_report.chat %}
+      <div>
+        <dt>Chat</dt>
+        <dd>{{ validation_report.chat.latency_ms or '?' }} ms · preview: {{ validation_report.chat.answer_preview or 'n/a' }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+    {% else %}
+    <p class="diag-empty">No validation report found. Run <code>make validate</code> to generate one.</p>
+    {% endif %}
+    <footer>
+      <button class="ghost-button" type="button" data-suggest="Run make validate">Copy command</button>
+    </footer>
+  </article>
+
+  <article class="glow-card diag-card">
+    <header>
+      <h2>Operational checklist</h2>
+      <span class="status-pill ok">Local</span>
+    </header>
+    <ol class="diag-steps">
+      <li>Run `make validate` after changing models or hardware.</li>
+      <li>Use `/health` or this page before demos.</li>
+      <li>Archive `validation_report.json` with release builds.</li>
+    </ol>
+    <p class="diag-summary">Need deeper telemetry? Tail `uvicorn.log` for structured inference metrics.</p>
+  </article>
+</section>
+{% endblock %}

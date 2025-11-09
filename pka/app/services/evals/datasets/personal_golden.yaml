@@ -1,0 +1,20 @@
+# Placeholder golden dataset; to be populated with benchmark questions and expected answers.
+metadata:
+  name: personal_golden
+  version: 0.1.0
+  description: Baseline evaluation scenarios for the Personal Knowledge Analyst.
+examples:
+  - question: >
+      Summarise my key takeaways from the book "Deep Work" captured in my knowledge base.
+    mode: synthesize
+    expectations:
+      min_sources: 2
+      required_sources:
+        - deep_work_notes.md:L10-L30
+        - deep_work_notes.md:L45-L60
+  - question: >
+      Do we have notes about the "Apollo Project" initiative from last quarter?
+    mode: synthesize
+    expectations:
+      require_abstain: true
+      max_latency_ms: 1500

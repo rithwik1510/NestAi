@@ -1,0 +1,82 @@
+﻿*** Begin Patch
+*** Update File: pka/app/services/health.py
+@@
+-    def run_checks(self) -> HealthStatus:
+-        probes: List[HealthProbe] = [
+-            self._check_ollama_daemon(),
+-            self._check_ollama_models(),
++    def run_checks(self) -> HealthStatus:
++        tags_payload, tags_error = self._fetch_tags()
++        probes: List[HealthProbe] = [
++            self._check_ollama_daemon(tags_error),
++            self._check_ollama_models(tags_payload, tags_error),
+             self._check_embedding_dimension(),
+         ]
+         status = "pass" if all(probe.healthy for probe in probes) else "fail"
+         return HealthStatus(status=status, probes=probes)
+ 
+-    def _check_ollama_daemon(self) -> HealthProbe:
+-        url = f"{settings.ollama_base_url.rstrip('/')}/api/tags"
+-        try:
+-            response = self._http_client.get(url)
+-            response.raise_for_status()
+-        except httpx.HTTPError as exc:
+-            detail = f"Ollama unreachable: {exc!s}"
+-            logger.debug(detail, exc_info=exc)
+-            return HealthProbe(name="ollama_daemon", healthy=False, detail=detail, checked_at=datetime.utcnow())
+-        return HealthProbe(name="ollama_daemon", healthy=True, detail="OK", checked_at=datetime.utcnow())
+-
+-    def _check_ollama_models(self) -> HealthProbe:
+-        url = f"{settings.ollama_base_url.rstrip('/')}/api/tags"
+-        required = {settings.ollama_chat_model, settings.ollama_embed_model}
+-        try:
+-            response = self._http_client.get(url)
+-            response.raise_for_status()
+-            payload: Dict[str, Any] = response.json()
+-            available = {model.get("name") or model.get("model") for model in payload.get("models", [])}
+-            missing = sorted(required - available)
+-            if missing:
+-                detail = f"Missing models: {', '.join(missing)}"
+-                return HealthProbe(name="ollama_models", healthy=False, detail=detail, checked_at=datetime.utcnow())
+-        except httpx.HTTPError as exc:
+-            detail = f"Ollama model check failed: {exc!s}"
+-            logger.debug(detail, exc_info=exc)
+-            return HealthProbe(name="ollama_models", healthy=False, detail=detail, checked_at=datetime.utcnow())
+-        except ValueError as exc:
+-            detail = f"Invalid response from Ollama: {exc!s}"
+-            logger.debug(detail, exc_info=exc)
+-            return HealthProbe(name="ollama_models", healthy=False, detail=detail, checked_at=datetime.utcnow())
+-        return HealthProbe(name="ollama_models", healthy=True, detail="OK", checked_at=datetime.utcnow())
++    def _fetch_tags(self) -> tuple[Dict[str, Any] | None, str | None]:
++        url = f"{settings.ollama_base_url.rstrip('/')}/api/tags"
++        try:
++            response = self._http_client.get(url)
++            response.raise_for_status()
++        except httpx.HTTPError as exc:
++            detail = f"Ollama unreachable: {exc!s}"
++            logger.debug(detail, exc_info=exc)
++            return None, detail
++        try:
++            payload: Dict[str, Any] = response.json()
++        except ValueError as exc:
++            detail = f"Invalid response from Ollama: {exc!s}"
++            logger.debug(detail, exc_info=exc)
++            return None, detail
++        return payload, None
++
++    def _check_ollama_daemon(self, tags_error: str | None) -> HealthProbe:
++        if tags_error:
++            return HealthProbe(name="ollama_daemon", healthy=False, detail=tags_error, checked_at=datetime.utcnow())
++        return HealthProbe(name="ollama_daemon", healthy=True, detail="OK", checked_at=datetime.utcnow())
++
++    def _check_ollama_models(self, payload: Dict[str, Any] | None, tags_error: str | None) -> HealthProbe:
++        if tags_error:
++            return HealthProbe(name="ollama_models", healthy=False, detail=tags_error, checked_at=datetime.utcnow())
++        required = {settings.ollama_chat_model, settings.ollama_embed_model}
++        available = {model.get("name") or model.get("model") for model in payload.get("models", [])} if payload else set()
++        missing = sorted(required - available)
++        if missing:
++            detail = f"Missing models: {', '.join(missing)}"
++            return HealthProbe(name="ollama_models", healthy=False, detail=detail, checked_at=datetime.utcnow())
++        return HealthProbe(name="ollama_models", healthy=True, detail="OK", checked_at=datetime.utcnow())
+*** End Patch
